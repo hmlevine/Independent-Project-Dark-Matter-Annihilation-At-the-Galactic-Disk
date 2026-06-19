@@ -19,6 +19,7 @@ from scipy.integrate import simpson
 
 #import pandas as pd
 #import time
+
 from scipy.stats import norm
 from scipy.integrate import quad
 from scipy.integrate import solve_ivp
@@ -73,8 +74,6 @@ def zhao_profile(r, rho_s, r_s, gamma=1.0, alpha=1.0, beta=3.0):
 #        return 0
     return rho_s / ((r / r_s)**gamma * (1 + (r / r_s)**alpha)**((beta - gamma) / alpha))
 
-# Numba requires explicit loops rather than keyword **kwargs...
-# So..., this helps runs the actual math loop across all random samples quicker...
 
 @njit
 def _run_mc_chunk_standard(profile_func, r, rho_samples, r_s_samples, num_samples):
@@ -100,38 +99,6 @@ def _run_mc_chunk_zhao(profile_func, r, rho_samples, r_s_samples, num_samples, g
         out[i] = profile_func(r, rho_samples[i], r_s_samples[i], gamma, alpha, beta)
     return out
 
-
-#@njit()
-#def _run_mc_chunk(profile_func, r, rho_samples, r_s_samples, num_samples,extra_args):
-    
-#    """Internal compiled loop that ealuates profiles as faster speeds!"""
-    
-    #creating empty matrix: shape (num_samples, len(r))
-   
-#    out = np.empty((num_samples, len(r)))
-
-#    for i in range(num_samples):
-        # Unpacking the extra parameters if provided:
-#        if len(extra_args) == 1:       # Einasto (alpha)
-#            out[i] = profile_func(r, rho_samples[i], r_s_samples[i], extra_args[0])
-#        elif len(extra_args) == 3:     # Zhao (gamma, alpha, beta)
-#            out[i] = profile_func(r, rho_samples[i], r_s_samples[i], extra_args[0], extra_args[1], extra_args[2])
-#        else:                          # NFW and Moore
-#            out[i] = profile_func(r, rho_samples[i], r_s_samples[i])
-            
-#    return out
-
-# Now defining the Monte Carlo Uncertainty Calculation:
-
-#@njit()
-
-#def annihilation_integrand(r, profile_func, sigmav, m_chi):
-#    rho = profile_func(r)
-#    dr_dv = 0.5 * sigmav * (rho / m_chi)**2
-#    r_cm = r * KPC_TO_CM
-#    return dr_dv * (4.0 * np.pi * r_cm**2) * KPC_TO_CM
-
-
 def annihilation_integrand(r, profile_func, sigmav, m_chi):
     # Call whatever profile function was passed directly
     rho = profile_func(r) 
@@ -139,38 +106,6 @@ def annihilation_integrand(r, profile_func, sigmav, m_chi):
     dr_dv = 0.5 * sigmav * (rho / m_chi)**2
     r_cm = r * 3.086e21
     return dr_dv * (4.0 * np.pi * r_cm**2) * 3.086e21
-
-
-#def annihilation_integrand(r, profile_name, sigmav, m_chi):
-#    # Select profile via standard strings
-#    if profile_name == "nfw":
-#        rho = nfw_profile(r)
-#    elif profile_name == "einasto":
-#        rho = einasto_profile(r)
-#    elif profile_name == "moore":
-#        rho = moore_profile(r)
-#    else:
-#        rho = zhao_profile(r)
-        
-#    dr_dv = 0.5 * sigmav * (rho / m_chi)**2
-#    r_cm = r * 3.086e21
-#    return dr_dv * (4.0 * np.pi * r_cm**2) * 3.086e21
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def monte_carlo_uncertainty(profile_func, r, rho_s, r_s, num_samples=100000, extra_args = None):
@@ -238,45 +173,6 @@ def monte_carlo_uncertainty(profile_func, r, rho_s, r_s, num_samples=100000, ext
             chunk_out = _run_mc_chunk_standard(profile_func, r, rho_c, r_s_c, chunk_size)
             
         samples_list.append(chunk_out)
-
-#    for i in tqdm(range(chunks), desc="    Progress", leave=False):
-#        start_idx = i * chunk_size
-#        end_idx = start_idx + chunk_size
-        
-#        rho_c = rho_samples[start_idx:end_idx]
-#        r_s_c = r_s_samples[start_idx:end_idx]
-        
-        # Pure Python handles the parameter numbers safely before Numba executes
-#        if "einasto" in func_name:
-#            alpha = extra_args[0] if extra_args is not None else 0.17
-#            chunk_out = _run_mc_chunk_einasto(profile_func, r, rho_c, r_s_c, chunk_size, alpha)
-            
-#        elif "zhao" in func_name:
-#            gamma, alpha, beta = extra_args if extra_args is not None else (1.0, 1.0, 3.0)
-#            chunk_out = _run_mc_chunk_zhao(profile_func, r, rho_c, r_s_c, chunk_size, gamma, alpha, beta)
-            
-#        else: # Default fallback to NFW or Moore
-#            chunk_out = _run_mc_chunk_standard(profile_func, r, rho_c, r_s_c, chunk_size)
-            
-#        sample_list.append(chunk_out)
-
-        # tqdm progress bar interface initialization
-#    for i in tqdm(range(chunks), desc="    Progress", leave=False):
-#        start_idx = i * chunk_size
-#        end_idx = start_idx + chunk_size
-        
-        # Calling the math engine funct for this loop iteration
-
-#        chunk_out = _run_mc_chunk(
-#            profile_func, r, 
-#            rho_samples[start_idx:end_idx], 
-#            r_s_samples[start_idx:end_idx], 
-#            chunk_size, extra_args
-#        )
-#        samples_list.append(chunk_out)
- 
-
-
        
     # Stack array pieces and calculate output stats
     all_samples = np.vstack(samples_list)
